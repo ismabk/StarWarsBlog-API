@@ -8,8 +8,8 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
-#from models import Person
+from models import (db, User, Planet, Character, Favorite)
+from sqlalchemy import exc
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
@@ -29,6 +29,250 @@ def handle_invalid_usage(error):
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
+
+# ---------------------------- PEOPLE ---------------------------------------   
+
+@app.route('/people', methods=['GET'])
+def get_all_people():
+    charNames= Character.get_all()
+
+    if not charNames:
+        return jsonify({
+            "message": "People doesnt exist"
+        }), 500
+
+    return jsonify([
+         charName.serialize()
+         for charName in charNames
+        ]), 200
+
+
+@app.route('/people/<int:id>', methods=['GET'])
+def get_user(id):
+    charNames= Character.get_by_id(id)
+
+    if not charNames:
+        return jsonify({
+            "message": "People doesnt exist"
+        }), 500
+
+    return jsonify([
+         charName.serialize()
+         for charName in charNames
+        ]), 200
+
+@app.route('/people', methods=['POST'])
+def create_people():
+    charName = request.json.get(
+        "charName", None
+    )
+
+    if not(charName):
+        return jsonify({
+            "message": "Character not provided"
+        }), 400
+
+    myChar = Character(charName=charName)
+
+    try:
+        myChar.create()
+        return jsonify({
+            "message": "Character favorite created"
+        }), 201
+
+    except exc.IntegrityError:
+        return jsonify({
+            "message": "Data provided not valid"
+        }), 500
+
+
+# -------------------------- PLANETS -----------------------------------
+
+
+@app.route('/planet', methods=['GET'])
+def get_all_planets():
+    planetNames= Planet.get_all()
+
+    if not planetNames:
+        return jsonify({
+            "message": "People doesnt exist"
+        }), 500
+
+    return jsonify([
+         planetName.serialize()
+         for planetName in planetNames
+        ]), 200
+
+
+@app.route('/planet/<int:id>', methods=['GET'])
+def get_planet(id):
+    planetNames= Planet.get_by_id(id)
+
+    if not planetNames:
+        return jsonify({
+            "message": "Planet doesnt exist"
+        }), 500
+  
+    return jsonify({
+        planetName.serialize()
+        for planetName in planetNames
+        }), 200
+
+
+@app.route('/planet', methods=['POST'])
+def create_planet():
+    planetName = request.json.get(
+        "planetName", None
+    )
+
+    if not(planetName):
+        return jsonify({
+            "message": "Planet not provided"
+        }), 400
+
+    myPlanet = Planet(planetName=planetName)
+
+    try:
+        myPlanet.create()
+        return jsonify({
+            "message": "Planet favorite created"
+        }), 201
+
+    except exc.IntegrityError:
+        return jsonify({
+            "message": "Data provided not valid"
+        }), 500
+
+#----------------------------------- USERS ---------------------------
+
+@app.route('/users', methods=['POST'])
+def create_user():
+    username = request.json.get(
+        "username", None
+    )
+
+    if not(username):
+        return jsonify({
+            "message": "User not provided"
+        }), 400
+
+    myUser = User(username=username)
+
+    try:
+        myUser.create()
+        return jsonify({
+            "message": "User favorite created"
+        }), 201
+
+    except exc.IntegrityError:
+        return jsonify({
+            "message": "Data provided not valid"
+        }), 500
+
+
+@app.route('/users', methods=['GET'])
+def get_all_users():
+    users= User.get_all()
+
+    if not users:
+        return jsonify({
+            "message": "Users doesnt exist"
+        }), 500
+
+    return jsonify({
+         user.serialize()
+         for user in users
+        }), 200
+
+
+@app.route('/users/favorites', methods=['GET'])
+def get_all_users_favorites():
+    userFavorites= Favorite.get_all()
+    users = Favorite.get_user(userFavorites.user)
+
+    if not userFavorites:
+        return jsonify({
+            "message": "Favorites Users content doesnt exist"
+        }), 500
+
+    if not users:
+        return jsonify({
+            "message": " Users content doesnt exist"
+        }), 500
+
+    return jsonify({
+         user.serialize()
+         for user in users
+        }), 200
+
+##POST DE MANU
+@app.route('/favorite/planet/<int:id>', methods=['POST'])
+def create_favorite_planet():
+    planet = request.json.get(
+        "planetName", None
+    )
+
+    if not(planet):
+        return jsonify({
+            "message": "Planet not provided"
+        }), 400
+
+    myPlanetFavorite = Planet(planet_name=planet_name)
+
+    try:
+        myPlanetFavorite.create()
+        return jsonify({
+            "message": "Planet favorite created",
+            "data": myPlanetFavorite.serialize()
+        }), 201
+
+    except exc.IntegrityError:
+        return jsonify({
+            "message": "Data provided not valid"
+        }), 500
+
+@app.route('/favorite/people/<int:people_id>', methods=['POST'])
+def create_favorite_people():
+    char = request.json.get(
+        "charName", None
+    )
+
+    if not(char):
+        return jsonify({
+            "message": "Character not provided"
+        }), 400
+
+    myCharFavorite = char(charName=charName)
+
+    try:
+        myCharFavorite.create()
+        return jsonify({
+            "message": "Character favorite created"
+        }), 201
+
+    except exc.IntegrityError:
+        return jsonify({
+            "message": "Data provided not valid"
+        }), 500
+
+@app.route('/favorite/planet/<int:id>', methods=['DELETE'])
+def delete(id):
+
+    # myPlanetToDelete = favorite(fav_planet=planet_id)
+    
+    deletePlanet = Planet.query.get(id)
+    db.session.delete(deletePlanet)
+    db.session.commit()
+
+    try:
+        return jsonify({
+            "message": "Planet favorite deleted"
+        }), 201
+
+    except exc.IntegrityError:
+        return jsonify({
+            "message": "Planet provided not valid"
+        }), 500
 
 @app.route('/user', methods=['GET'])
 def handle_hello():
