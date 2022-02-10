@@ -3,34 +3,35 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Boolean
 
 db = SQLAlchemy()
 
-# class User(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     email = db.Column(db.String(120), unique=True, nullable=False)
-#     password = db.Column(db.String(80), unique=False, nullable=False)
-#     is_active = db.Column(db.Boolean(), unique=False, nullable=False)
-
 class User(db.Model):
-    # __tablename__ = 'user'
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(50), nullable=False)
-    # password = db.Column(db.String(30), nullable=False)
+    name = db.Column(db.String(50), nullable=False, unique=True)
+    email = db.Column(db.String(50), nullable=False, unique=True)
+    password = db.Column(db.String(50), nullable=False)
+    favorite_planets = db.relationship("FavoritePlanet")
+    favorite_characters = db.relationship("FavoriteCharacter")
+
 
     def __repr__(self):
-        return '<User %r - %s>' % (self.username, self.email)
+        return '<User %r - %s>' % (self.name, self.email)
 
     def serialize(self):
         return {
             "id": self.id,
-            "username": self.username,
+            "name": self.name,
             "email": self.email
-            # do not serialize the password, its a security breach
         }
 
     def create(self):
         db.session.add(self)
         db.session.commit()
         return self
+
+    @classmethod
+    def get_by_id(cls, id):
+        user = cls.query.get(id)
+        return user
 
     @classmethod
     def get_all(cls):
@@ -45,22 +46,19 @@ class User(db.Model):
         return self
 
 class Planet(db.Model):
+    __tablename__ = 'planets'
     id = db.Column(db.Integer, primary_key=True)
-    planetName = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(50), nullable=False, unique=True)
+    faved_by = db.relationship("FavoritePlanet", backref="planet_faved")
 
     def __repr__(self):
-        return '<Planet %r>' % self.planetName
+        return '<Planet %r>' % self.name
 
     def serialize(self):
         return {
             "id": self.id,
-            "planet": self.planetName,
+            "name": self.name,
         }
-
-    @classmethod
-    def get_by_id(cls, id):
-        planet = cls.query.get(id)
-        return planet
 
     @classmethod
     def get_all(cls):
@@ -70,33 +68,61 @@ class Planet(db.Model):
     def create(self):
         db.session.add(self)
         db.session.commit()
-        return self
 
     @classmethod
     def delete(self):
-        planet = Planet.query.get(self.id)
-        db.session.delete(planet)
+        db.session.delete(self)
         db.session.commit()
         return self
 
 class Character(db.Model):
+    __tablename__ = 'characters'
     id = db.Column(db.Integer, primary_key=True)
-    charName = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(50), nullable=False, unique=True)
+    faved_by = db.relationship("FavoriteCharacter")
 
     def __repr__(self):
-        return '<Character %r>' % self.charName
+        return '<Character %r>' % self.name
 
     def serialize(self):
         return {
             "id": self.id,
-            "charName": self.charName,
+            "name": self.name,
         }
 
     @classmethod
-    def get_by_id(cls, id):
-        data = cls.query.get(id)
+    def get_all(cls):
+        data = cls.query.all()
         return data
 
+    def create(self):
+        db.session.add(self)
+        db.session.commit()
+      
+
+    @classmethod
+    def delete(self):
+        character = Character.query.get(self.id)
+        db.session.delete(character)
+        db.session.commit()
+        return self 
+
+class FavoritePlanet(db.Model):
+    __tablename__ = 'favoritesPlanets'
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    planet = db.Column(db.Integer, db.ForeignKey("planets.id"))
+
+    def __repr__(self):
+        return f"{User.query.get(self.user)} faved {Planet.query.get(self.planet)}"
+            
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user": self.user,
+            "planet": self.planet,
+        }
+        
     @classmethod
     def get_all(cls):
         data = cls.query.all()
@@ -107,56 +133,28 @@ class Character(db.Model):
         db.session.commit()
         return self
 
+class FavoriteCharacter(db.Model):
+    __tablename__ = 'favoritesCharacters'
+    id = db.Column(db.Integer, primary_key=True)
+    user = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    character = db.Column(db.Integer, db.ForeignKey("characters.id"))
+
+    def __repr__(self):
+        return f"{User.query.get(self.user)} faved {Character.query.get(self.fav_character)}"
+            
+    def serialize(self):
+        return {
+            "id": self.id,
+            "user": self.user,
+            "character": self.character,
+        }
+
     @classmethod
-    def delete(self):
-        character = Character.query.get(self.id)
-        db.session.delete(character)
+    def get_all(cls):
+        data = cls.query.all()
+        return data
+
+    def create(self):
+        db.session.add(self)
         db.session.commit()
         return self
-
-class Favorite(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user = db.Column(db.Integer, ForeignKey('User.id'))
-    fav_planet = db.Column(db.Integer, ForeignKey('Planet.id'))
-    fav_char = db.Column(db.Integer, ForeignKey('Character.id'))
-    user_R = db.relationship(User)
-    fav_planet_R = db.relationship(Planet)
-    fav_char_R = db.relationship(Character)
-    
-    # def __repr__(self):
-    #     return '<Favorite %r>' % self.fav_planet, self.fav_char
-
-    # def serialize(self):
-    #     return {
-    #         "id": self.id,
-    #         "user": self.user,
-    #         "fav_planet": self.fav_planet,
-    #         "fav_char": self.fav_char,
-    #     }
-
-    # def create(self):
-    #     db.session.add(self)
-    #     db.session.commit()
-    #     return self
-
-    # @classmethod
-    # def delete(self):
-    #     favorite = Favorite.query.get(self.id)
-    #     db.session.delete(favorite)
-    #     db.session.commit()
-    #     return self
-
-    # @classmethod
-    # def get_user(cls, user):
-    #     data = cls.query.filter_by(user=user)
-    #     return data
-
-    # @classmethod
-    # def get_by_fav_planet(cls, id):
-    #     data = cls.query.filter_by(fav_planet=id)
-    #     return data
-
-    # @classmethod
-    # def get_by_id(cls, id):
-    #     data = cls.query.filter_by(id=id)
-    #     return data
