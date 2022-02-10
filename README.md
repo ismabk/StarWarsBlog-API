@@ -7,7 +7,7 @@
 <p>
 ##Project created during the 4Geeks course.
 
-The project is using the SQLAlchemy Python library to generate the database with the endpoints and the singup and the login.
+The project is using the SQLAlchemy Python library to generate the database with their endpoints, the singup and the login.
 
 ### How to start this project:
 - If you are working locally, type the following command in your terminal:
